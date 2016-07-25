@@ -3,7 +3,7 @@ set -ex
 
 . /io/ci/utils.sh
 
-export PROJECT_NAME=lonlat_bng
+export PROJECT_NAME=polyline-ffi
 # we pass {TRAVIS_TAG} into Docker from Travis
 export TARGET=x86_64-unknown-linux-gnu
 
