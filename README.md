@@ -28,5 +28,10 @@ The return type is a pointer to a C character array (`char*`).
 Free memory pointed to by `char*`, which Rust has allocated across the FFI boundary.  
 Callers must pass the same `char*` they receive from `encode_coordinates_ffi`.
 
+# Binaries
+Compressed binaries are available for Linux (64-bit), OSX (64-bit), and Windows (32-bit and 64-bit), from the [releases](https://github.com/urschrei/polyline-ffi/releases) page.  
+The Linux binary has been built using the manylinux1 (CentOS 5.11) Docker image, and is widely compatible.  
+Both Linux and OSX binaries have been built with `rpath` support.
+
 # License
 [MIT](license.txt)
