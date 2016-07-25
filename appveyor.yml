@@ -56,12 +56,12 @@ artifacts:
 before_deploy:
   # Generate artifacts for release
   # build artifacts for generating a .def, needed by the MinGW Python build
-  - cargo rustc --release -- -C link-args=-Wl,--out-implib,lonlat_bng.a
-  - dlltool -z target\release\lonlat_bng.def --export-all-symbols target\release\lonlat_bng.dll
+  - cargo rustc --release -- -C link-args=-Wl,--out-implib,polyline_ffi.a
+  - dlltool -z target\release\polyline_ffi.def --export-all-symbols target\release\polyline_ffi.dll
   - ps: ls target\release
   - mkdir staging
   # TODO update this part to copy the artifacts that make sense for your project
-  - copy target\release\lonlat* staging
+  - copy target\release\polyline* staging
   - cd staging
     # release zipfile will look like 'rust-everywhere-v1.2.3-x86_64-pc-windows-msvc'
   - 7z a ../%PROJECT_NAME%-%APPVEYOR_REPO_TAG_NAME%-%TARGET%.zip *
