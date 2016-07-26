@@ -17,12 +17,12 @@ mk_tarball() {
     # TODO update this part to copy the artifacts that make sense for your project
     # NOTE All Cargo build artifacts will be under the 'target/$TARGET/{debug,release}'
     if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-        for lib in target/$TARGET/release/libpolyline_ffi.*; do
+        for lib in target/$TARGET/release/*.so; do
             strip -s $lib
         done
     fi
     if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        for lib in target/$TARGET/release/libpolyline_ffi.*; do
+        for lib in target/$TARGET/release/*.dylib; do
             strip -ur $lib
         done
     fi

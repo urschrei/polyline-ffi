@@ -30,7 +30,7 @@ mk_tarball() {
 
     # TODO update this part to copy the artifacts that make sense for your project
     # NOTE All Cargo build artifacts will be under the 'target/$TARGET/{debug,release}'
-    for lib in /io/target/$TARGET/release/libpolyline_ffi.*; do
+    for lib in /io/target/$TARGET/release/*.so; do
         strip -s $lib
     done
 
