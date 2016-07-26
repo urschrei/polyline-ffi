@@ -20,3 +20,4 @@ doc = true
 
 [profile.release]
 rpath = true
+debug = true
