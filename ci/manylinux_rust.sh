@@ -34,7 +34,8 @@ mk_tarball() {
         strip -s $lib
     done
 
-    cp /io/target/$TARGET/release/libpolyline_ffi.* $td
+    cp /io/target/$TARGET/release/*.so $td
+    cp -r /io/target/$TARGET/release/*.dSYM $td 2>/dev/null || :
 
     pushd $td
     # release tarball will look like 'rust-everywhere-v1.2.3-x86_64-unknown-linux-gnu.tar.gz'
