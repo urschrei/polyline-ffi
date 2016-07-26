@@ -164,12 +164,12 @@ mod tests {
 
     #[test]
     fn test_array_conversion() {
-        let original = vec![[1.0, 2.0], [3.0, 4.0]];
+        let original = vec![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
         // move into an Array, and leak it
         let arr: Array = original.as_slice().into();
-        // move back into a Vec -- leaked value still needs to be dropped
+        // move back into an slice -- leaked value still needs to be dropped
         let converted: &[[f64; 2]] = arr.into();
-        assert_eq!(converted[0], [1.0, 2.0]);
+        assert_eq!(converted, &[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]);
         // drop it
         drop_float_array(converted.into());
     }
@@ -235,5 +235,16 @@ mod tests {
         assert_eq!(result, output);
         // Drop received FFI data
         drop_cstring(pl);
+    }
+
+    #[test]
+    fn test_long_running() {
+        let input = CString::new("_ibE_seK_seK_seK").unwrap().as_ptr();
+        for _ in 0..100 {
+            let result: &[[f64; 2]] = decode_polyline_ffi(input, 5).into();
+            assert_eq!(result, [[1.0, 2.0], [3.0, 4.0]]);
+            drop_float_array(result.into());
+        }
+
     }
 }
