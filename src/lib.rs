@@ -237,14 +237,14 @@ mod tests {
         drop_cstring(pl);
     }
 
-    #[test]
-    fn test_long_running() {
-        let input = CString::new("_ibE_seK_seK_seK").unwrap().as_ptr();
-        for _ in 0..100 {
-            let result: &[[f64; 2]] = decode_polyline_ffi(input, 5).into();
-            assert_eq!(result, [[1.0, 2.0], [3.0, 4.0]]);
-            drop_float_array(result.into());
-        }
+    // #[test]
+    // fn test_long_running() {
+    //     let input: Array = vec![[1.0, 2.0], [3.0, 4.0]].as_slice().into();
+    //     for _ in 0..100 {
+    //         let result: &[[f64; 2]] = decode_polyline_ffi(input, 5).into();
+    //         assert_eq!(result, [[1.0, 2.0], [3.0, 4.0]]);
+    //         drop_float_array(result.into());
+    //     }
 
-    }
+    // }
 }
