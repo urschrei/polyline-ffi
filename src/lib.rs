@@ -107,7 +107,7 @@ pub extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: uint32_t) ->
 /// use libc::{c_void, size_t};
 /// use std::ffi::CStr;
 /// use std::slice;
-/// let input = vec![[1.0, 2.0], [3.0, 4.0]].as_slice();
+/// let input = vec![[1.0, 2.0], [3.0, 4.0]];
 /// let array = Array { data: input.as_ptr() as *const c_void, len: input.len() as size_t };
 /// let output = "_ibE_seK_seK_seK".to_string();
 /// let pl = encode_coordinates_ffi(array, 5);
