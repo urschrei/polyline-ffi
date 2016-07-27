@@ -18,8 +18,8 @@ pub struct Array {
 
 
 // Build an Array from &[[f64; 2]], so it can be leaked across the FFI boundary
-impl<'a> From<&'a [[f64; 2]]> for Array {
-    fn from(sl: &'a [[f64; 2]]) -> Self {
+impl From<Vec<[f64; 2]>> for Array {
+    fn from(sl: Vec<[f64; 2]>) -> Self {
         let array = Array {
             data: sl.as_ptr() as *const c_void,
             len: sl.len() as size_t,
@@ -30,25 +30,26 @@ impl<'a> From<&'a [[f64; 2]]> for Array {
 }
 
 // Build &[[f64; 2]] from an Array, so it can be dropped
-impl<'a> From<Array> for &'a [[f64; 2]] {
+impl From<Array> for Vec<[f64; 2]> {
     fn from(arr: Array) -> Self {
-        unsafe { slice::from_raw_parts(arr.data as *const [f64; 2], arr.len) }
+        unsafe { slice::from_raw_parts(arr.data as *mut [f64; 2], arr.len).to_vec() }
     }
 }
 
 // Decode a Polyline into an Array
 fn arr_from_string(incoming: String, precision: uint32_t) -> Array {
     let result: Array = match decode_polyline(incoming, precision) {
-        Ok(res) => res.as_slice().into(),
+        Ok(res) => res.into(),
         // should be easy to check for
-        Err(_) => vec![[f64::NAN, f64::NAN]].as_slice().into(),
+        Err(_) => vec![[f64::NAN, f64::NAN]].into(),
     };
     result.into()
 }
 
 // Decode an Array into a Polyline
 fn string_from_arr(incoming: Array, precision: uint32_t) -> String {
-    match encode_coordinates(incoming.into(), precision) {
+    let inc: Vec<_> = incoming.into();
+    match encode_coordinates(&inc, precision) {
         Ok(res) => res,
         // we don't need to adapt the error
         Err(res) => res,
@@ -143,7 +144,7 @@ pub extern "C" fn drop_float_array(arr: Array) {
     if arr.data.is_null() {
         return;
     }
-    let _: &[[f64; 2]] = arr.into();
+    let _: Vec<_> = arr.into();
 }
 
 /// Free `CString` memory which Rust has allocated across the FFI boundary
@@ -166,9 +167,9 @@ mod tests {
     fn test_array_conversion() {
         let original = vec![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
         // move into an Array, and leak it
-        let arr: Array = original.as_slice().into();
+        let arr: Array = original.into();
         // move back into an slice -- leaked value still needs to be dropped
-        let converted: &[[f64; 2]] = arr.into();
+        let converted: Vec<_> = arr.into();
         assert_eq!(converted, &[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]);
         // drop it
         drop_float_array(converted.into());
@@ -178,7 +179,7 @@ mod tests {
     fn test_drop_empty_float_array() {
         let original = vec![[1.0, 2.0], [3.0, 4.0]];
         // move into an Array, and leak it
-        let mut arr: Array = original.as_slice().into();
+        let mut arr: Array = original.into();
         // zero Array contents
         arr.data = ptr::null();
         drop_float_array(arr);
@@ -188,7 +189,7 @@ mod tests {
     fn test_coordinate_conversion() {
         let input = vec![[1.0, 2.0], [3.0, 4.0]];
         let output = "_ibE_seK_seK_seK";
-        let input_arr: Array = input.as_slice().into();
+        let input_arr: Array = input.into();
         let transformed: String = super::string_from_arr(input_arr, 5);
         assert_eq!(transformed, output);
     }
@@ -200,7 +201,7 @@ mod tests {
         // String to Array
         let transformed: Array = super::arr_from_string(input, 5);
         // Array to Vec
-        let transformed_arr: &[[f64; 2]] = transformed.into();
+        let transformed_arr: Vec<_> = transformed.into();
         assert_eq!(transformed_arr, output);
     }
 
@@ -212,7 +213,7 @@ mod tests {
         // String to Array
         let transformed: Array = super::arr_from_string(input, 5);
         // Array to Vec
-        let transformed_arr: &[[f64; 2]] = transformed.into();
+        let transformed_arr: Vec<_> = transformed.into();
         // this will fail, bc transformed_arr is [[NaN, NaN]]
         assert_eq!(transformed_arr, output.as_slice());
     }
@@ -220,14 +221,14 @@ mod tests {
     #[test]
     fn test_ffi_polyline_decoding() {
         let input = CString::new("_ibE_seK_seK_seK").unwrap().as_ptr();
-        let result: &[[f64; 2]] = decode_polyline_ffi(input, 5).into();
+        let result: Vec<_> = decode_polyline_ffi(input, 5).into();
         assert_eq!(result, [[1.0, 2.0], [3.0, 4.0]]);
         drop_float_array(result.into());
     }
 
     #[test]
     fn test_ffi_coordinate_encoding() {
-        let input: Array = vec![[1.0, 2.0], [3.0, 4.0]].as_slice().into();
+        let input: Array = vec![[1.0, 2.0], [3.0, 4.0]].into();
         let output = "_ibE_seK_seK_seK".to_string();
         let pl = encode_coordinates_ffi(input, 5);
         // Allocate a new String
@@ -237,14 +238,10 @@ mod tests {
         drop_cstring(pl);
     }
 
-    // #[test]
-    // fn test_long_running() {
-    //     let input: Array = vec![[1.0, 2.0], [3.0, 4.0]].as_slice().into();
-    //     for _ in 0..100 {
-    //         let result: &[[f64; 2]] = decode_polyline_ffi(input, 5).into();
-    //         assert_eq!(result, [[1.0, 2.0], [3.0, 4.0]]);
-    //         drop_float_array(result.into());
-    //     }
-
-    // }
+    #[test]
+    fn test_send_coords() {
+        let res: Vec<_> = send_coords().into();
+        assert_eq!(res, &[[1.0, 2.0], [3.0, 4.0]]);
+        drop_float_array(res.into())
+    }
 }
