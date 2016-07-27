@@ -237,11 +237,4 @@ mod tests {
         // Drop received FFI data
         drop_cstring(pl);
     }
-
-    #[test]
-    fn test_send_coords() {
-        let res: Vec<_> = send_coords().into();
-        assert_eq!(res, &[[1.0, 2.0], [3.0, 4.0]]);
-        drop_float_array(res.into())
-    }
 }
