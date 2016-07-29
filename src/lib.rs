@@ -168,9 +168,9 @@ mod tests {
         let original = vec![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
         // move into an Array, and leak it
         let arr: Array = original.into();
-        // move back into an slice -- leaked value still needs to be dropped
+        // move back into a Vec -- leaked value still needs to be dropped
         let converted: Vec<_> = arr.into();
-        assert_eq!(converted, &[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]);
+        assert_eq!(&converted, &[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]);
         // drop it
         drop_float_array(converted.into());
     }
@@ -202,7 +202,7 @@ mod tests {
         let transformed: Array = super::arr_from_string(input, 5);
         // Array to Vec
         let transformed_arr: Vec<_> = transformed.into();
-        assert_eq!(transformed_arr, output);
+        assert_eq!(&transformed_arr, &output);
     }
 
     #[test]
@@ -222,7 +222,7 @@ mod tests {
     fn test_ffi_polyline_decoding() {
         let input = CString::new("_ibE_seK_seK_seK").unwrap().as_ptr();
         let result: Vec<_> = decode_polyline_ffi(input, 5).into();
-        assert_eq!(result, [[1.0, 2.0], [3.0, 4.0]]);
+        assert_eq!(&result, &[[1.0, 2.0], [3.0, 4.0]]);
         drop_float_array(result.into());
     }
 
@@ -233,7 +233,7 @@ mod tests {
         let pl = encode_coordinates_ffi(input, 5);
         // Allocate a new String
         let result = unsafe { CStr::from_ptr(pl).to_str().unwrap() };
-        assert_eq!(result, output);
+        assert_eq!(&result, &output);
         // Drop received FFI data
         drop_cstring(pl);
     }
