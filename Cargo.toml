@@ -1,15 +1,19 @@
 [package]
 name = "polyline-ffi"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["Stephan Hügel <urschrei@gmail.com>"]
 description = "FFI bindings for the polyline crate"
 readme = "README.md"
 keywords = ["polyline", "geo", "ffi"]
 license = "MIT"
+# build = "src/build.rs"
 
 [dependencies]
 polyline = "0.4"
 libc = "0.2.12"
+
+[build-dependencies]
+# rusty-cheddar = "0.3.3"
 
 [lib]
 name = "polyline_ffi"
@@ -20,4 +24,3 @@ doc = true
 
 [profile.release]
 rpath = true
-debug = true
