@@ -8,21 +8,26 @@ Convert a Polyline into an array of coordinates.
 Callers must pass two arguments:
 
 - a pointer to a `NUL`-terminated character array (`char*`)
-- an unsigned 32-bit `int` for precision (`5` for Google Polylines, `6` for OSRM and Valhalla Polylines)
+- an unsigned 32-bit `int` for precision (`5` for Google Polylines, `6` for OSRM and Valhalla Polylines)  
+
 Returns an `Array` struct with two fields:
-- `len`, an integer of type `size_t`, denoting the array length
-- `data`, a void pointer to a nested double-precision float array: `[[1.0, 2.0], [3.0, 4.0]]`.
+- `data`, a void pointer to a nested double-precision float array: e.g. `[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]`
+- `len`, an integer of type `size_t`, denoting the array length, e.g. `3`
+
+Callers must then call `drop_float_array` to free the memory allocated by this function.
 
 ## `drop_float_array`
 Free memory pointed to by `Array`, which Rust has allocated across the FFI boundary.  
 Callers must pass the same `Array` struct that was received from `decode_polyline_ffi`.
 
 ## `encode_coordinates_ffi`
-Convert coordinates into a Polyline
+Convert coordinates into a Polyline.  
 Callers must pass a struct, with two members:
-- `len`, the array length
-- `data`, a void pointer to a nested double-precision float array: `[[1.0, 2.0], [3.0, 4.0]]`  
-The return type is a pointer to a C character array (`char*`).
+- `data`, a void pointer to a nested double-precision float array: e.g. `[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]`
+- `len`, the array length, e.g. `3`
+
+Returns a pointer to a C character array (`char*`).  
+Callers must then call `drop_cstring` to free the memory allocated by this function.
 
 ## `drop_cstring`
 Free memory pointed to by `char*`, which Rust has allocated across the FFI boundary.  
