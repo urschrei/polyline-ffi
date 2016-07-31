@@ -64,18 +64,6 @@ fn string_from_arr(incoming: Array, precision: uint32_t) -> String {
 /// - an unsigned 32-bit `int` for precision (5 for Google Polylines, 6 for
 /// OSRM and Valhalla Polylines)
 ///
-/// # Examples
-///
-/// ```
-/// use std::ffi::CString;
-/// use std::slice;
-/// let input = CString::new("_ibE_seK_seK_seK").unwrap().as_ptr();
-/// let result: Array = decode_polyline_ffi(input, 5);
-/// let slice = unsafe { slice::from_raw_parts(result.data as *const [f64; 2], result.len) };
-/// assert_eq!(slice, [[1.0, 2.0], [3.0, 4.0]]);
-/// drop_float_array(result);
-/// ```
-///
 /// A decoding failure will always return an array: `[[NaN, NaN]]`
 ///
 /// Implementations calling this function **must** call [`drop_float_array`](fn.drop_float_array.html)
@@ -99,22 +87,6 @@ pub extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: uint32_t) ->
 ///     - `len`, the length of the array being passed. Its type must be `size_t`: `1`
 /// - an unsigned 32-bit `int` for precision (5 for Google Polylines, 6 for
 /// OSRM and Valhalla Polylines)
-///
-/// # Examples
-///
-/// ```
-/// extern crate libc;
-/// use libc::{c_void, size_t};
-/// use std::ffi::CStr;
-/// use std::slice;
-/// let input = vec![[1.0, 2.0], [3.0, 4.0]];
-/// let array = Array { data: input.as_ptr() as *const c_void, len: input.len() as size_t };
-/// let output = "_ibE_seK_seK_seK".to_string();
-/// let pl = encode_coordinates_ffi(array, 5);
-/// let result = unsafe { CStr::from_ptr(pl).to_str().unwrap() };
-/// assert_eq!(result, output);
-/// drop_cstring(pl);
-/// ```
 ///
 /// A decoding failure will always return a string: "Couldn't decode Polyline"
 ///
