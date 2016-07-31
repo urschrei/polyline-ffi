@@ -64,7 +64,7 @@ fn string_from_arr(incoming: Array, precision: uint32_t) -> String {
 /// - an unsigned 32-bit `int` for precision (5 for Google Polylines, 6 for
 /// OSRM and Valhalla Polylines)
 ///
-/// A decoding failure will always return an array: `[[NaN, NaN]]`
+/// A decoding failure will return an [Array](struct.Array.html) whose `data` field is `[[NaN, NaN]]`, and whose `len` field is `1`.
 ///
 /// Implementations calling this function **must** call [`drop_float_array`](fn.drop_float_array.html)
 /// with the returned [Array](struct.Array.html), in order to free the memory it allocates.
@@ -88,7 +88,10 @@ pub extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: uint32_t) ->
 /// - an unsigned 32-bit `int` for precision (5 for Google Polylines, 6 for
 /// OSRM and Valhalla Polylines)
 ///
-/// A decoding failure will always return a string: "Couldn't decode Polyline"
+/// A decoding failure will return one of the following:
+///
+/// - a `char*` beginning with "Longitude error:" if invalid longitudes are passed
+/// - a `char*` beginning with "Latitude error:" if invalid latitudes are passed
 ///
 /// Implementations calling this function **must** call [`drop_cstring`](fn.drop_cstring.html)
 /// with the returned `c_char` pointer, in order to free the memory it allocates.
