@@ -1,4 +1,5 @@
-#![doc(html_root_url = "https://urschrei.github.io/polyline-ffi/")]
+#![doc(html_logo_url = "https://cdn.rawgit.com/urschrei/polyline-ffi/master/line.svg",
+       html_root_url = "https://urschrei.github.io/polyline-ffi/")]
 //! This module exposes functions for accessing the Polyline encoding and decoding functions via FFI
 extern crate polyline;
 use polyline::{encode_coordinates, decode_polyline};
