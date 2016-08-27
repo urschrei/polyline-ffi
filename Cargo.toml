@@ -20,7 +20,7 @@ libc = "0.2.14"
 
 [lib]
 name = "polyline_ffi"
-crate-type = ["cdylib"]
+crate-type = ["dylib"]
 test = true
 doctest = false
 doc = true
