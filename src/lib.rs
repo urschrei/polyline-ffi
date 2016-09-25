@@ -196,8 +196,8 @@ mod tests {
 
     #[test]
     fn test_ffi_polyline_decoding() {
-        let input = CString::new("_ibE_seK_seK_seK").unwrap().as_ptr();
-        let result: Vec<_> = decode_polyline_ffi(input, 5).into();
+        let result: Vec<_> =
+            decode_polyline_ffi(CString::new("_ibE_seK_seK_seK").unwrap().as_ptr(), 5).into();
         assert_eq!(&result, &[[1.0, 2.0], [3.0, 4.0]]);
         drop_float_array(result.into());
     }
