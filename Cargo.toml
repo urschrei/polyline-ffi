@@ -27,3 +27,4 @@ doc = true
 
 [profile.release]
 rpath = true
+lto = true
