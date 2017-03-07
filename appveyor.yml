@@ -51,7 +51,7 @@ artifacts:
 before_deploy:
   # Generate artifacts for release
   # build artifacts for generating a .def, needed by the MinGW Python build
-  - cargo rustc --release -- -C target-cpu=native,-C link-args=-Wl,--out-implib,polyline_ffi.a
+  - cargo rustc --release -- -C target-cpu=native -C link-args=-Wl,--out-implib,polyline_ffi.a
   - dlltool -z target\release\polyline_ffi.def --export-all-symbols target\release\polyline_ffi.dll
   - ps: ls target\release
   - mkdir staging
