@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["decode_polyline","Decodes a Google Encoded Polyline."],["encode_coordinates","Encodes a Google Encoded Polyline. Accepts a slice, or anything (such as a Vec) that can deref to a slice."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["decode_polyline_ffi","Convert a Polyline into an array of coordinates"],["drop_cstring","Free `CString` memory which Rust has allocated across the FFI boundary"],["drop_float_array","Free Array memory which Rust has allocated across the FFI boundary"],["encode_coordinates_ffi","Convert an array of coordinates into a Polyline"]],"struct":[["Array",""]]});
