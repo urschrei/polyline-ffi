@@ -1,26 +1,15 @@
+dist: trusty
 language: rust
-cache: cargo
-services:
-  - docker
-addons:
-  apt:
-    packages:
-      - libcurl4-openssl-dev
-      - libelf-dev
-      - libdw-dev
-      - binutils-dev
+services: docker
+sudo: required
 env:
   global:
     # This will be part of the release tarball
     # TODO change the project name
-    - PROJECT_NAME=polyline-ffi
-    # TODO comment out this variable if you don't want to build .deb packages on all the targets.
-    # - MAKE_DEB=yes
-    # TODO update these two variables. They are part of the .deb package metadata
-    - DEB_MAINTAINER="Stephan Hügel <urschrei@gmail.com>"
-    - DEB_DESCRIPTION=""
+    - CRATE_NAME=polyline-ffi
     - TRAVIS_CARGO_NIGHTLY_FEATURE=""
     - DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64
+    # GH_TOKEN
     - secure: iUVC2jM8zFWjqPLCki1G1oKxvlKMdvJxoaBmrWq6ffWp9ICRn42925nhnNFK4B+UXyo27/+GaYTNFIff4ASkQf0iCPY+iY85ciRwc6R0xWTnvRcSosZ+Vot4Ip9bHKop2Xe5tJweH7RjypEn5pCZaH9Qw6+AqlqkoJz+UH/DNC2h+6pVXD18SPI9gsiBp+uR5K0cJRW5AVeSWORKNVWgYODSv/h7aQMik/3TOLpAS+tA+Uj/YHgS0mojUL2ucVS/zV9xVauUCq3fSRLz2bP5AsQpRpAVIp55g2CW9TRa9RoXPUcGZLflH/ccZh7K+mPamw7s414E3J79VGBeNTSIOKVoqJJDOTbvpxqz1cNoAMIkihcGNmGqGG6DZhsNuE3PZnCOB+FF4x/T8fQ37WF9E02A4pc3/z9B22LzdCk12Hs7aj4Z1EPkSTmj1gt/Gq0roQ56eZt7QjaamJ8c1z0Fmt4udcaW/56AlqEz9H38mVHIVUmeIygchdjO/E/PTP1aEWItQ20eVNYuo7yXFY35Y72jCybQ2JGnwhFqx641GDLPQTHFz6f4HOjK5mDKkMoagQZ737IWrXjDJaopkFGQZuH0/bxja9LI2rgi2L9gyI8u/PohB3om+rlRyshFQ+cr5qoWKDyF8ty1asB5vFtDtSGB5Gm+YGdDFrhMzB/0EgY=
 
 
@@ -93,17 +82,16 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
 
   allow_failures:
-    # Target `i686-unknown-linux-musl` is currently only available on the nightly channel
+    # Target `i686-unknown-linux-gnu` is currently only available on the nightly channel
     - os: linux
       rust: stable
-      env: TARGET=i686-unknown-linux-musl
+      env: TARGET=i686-unknown-linux-gnu
     - os: linux
       rust: beta
-      env: TARGET=i686-unknown-linux-musl
+      env: TARGET=i686-unknown-linux-gnu
 
 before_install:
-  - bash ci/preinstall.sh
-  - export PATH="$PATH:$HOME/.cargo/bin"
+  - set -e
 
 before_script: |
   PKGNAME="${TRAVIS_REPO_SLUG}" # must match with cargo.toml
@@ -112,26 +100,23 @@ before_script: |
   export PATH=$HOME/.local/bin:$PATH
 
 install:
-  - echo $TRAVIS_RUST_VERSION
   - bash ci/install.sh
+  - source ~/.cargo/env || true
 
 script:
   - bash ci/script.sh
 
+after_script: set +e
+
 after_success:
-  - travis-cargo --only stable doc
-  - travis-cargo --only stable doc-upload
-  - travis-cargo coveralls --no-sudo --verify
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then ./kcov/build/src/kcov --verify --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo target/kcov target/debug/polyline_ffi-*; fi
   - if [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then docker pull $DOCKER_IMAGE; fi
 
 before_deploy:
   - if ! [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then bash ci/before_deploy.sh; fi
   - if [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then sudo docker run -e TRAVIS_TAG="$TRAVIS_TAG" --rm -v `pwd`:/io $DOCKER_IMAGE /io/ci/manylinux_rust.sh; fi
-  - sudo chown $USER ${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.tar.gz
+  # - sudo chown $USER ${CRATE_NAME}-${TRAVIS_TAG}-${TARGET}.tar.gz
   
 deploy:
-  provider: releases
   # TODO Regenerate this api_key for your project, this one won't work for you. Here's how:
   # - Go to 'https://github.com/settings/tokens/new' and generate a Token with only the
   # `public_repo` scope enabled
@@ -141,24 +126,29 @@ deploy:
   api_key:
         - secure: KAUrCymWk0nLcuLl1rm9DIjV+pIe5+5lK+sGEFcTDRU382Yuc26tCwEcZTwUVxOICx7kzjAIiO+XjE36i7kZgpcZEgojX5P1FPoMaKUepuU2by2kahvWnCRtfPr0X3xKqRXExngceClnX41nE/huT/sthYbWDW547TPMCdDtcMUu5vnNxZuO1RnNSn+sWvs375Z226extqEokN2OVdf2PRQlTE7OcJnYEX0Pka7kX5ll/6CSBswY2vjTM4rX10vwDtYK1pYe0VMWPp3ROnamHzm3QZGIzFk6ibLAVBkS1sF/sCeeJfrrkHuofoQskldb2oCTzgkJvwJK2N/Lj0cN0Uthr+zHsJKpIqzV4F5pxd7rUeoll5/RVpJ4Fl57ASaKAX73oU56aEBofXqYmoNcAh3mb2+cUYb4Umqo/FhV+mIiV68XBGv1sxFq76u04uOfZMv8aIrSdRLS/SHPZT2wmTzmj9wgDDLvmBqkOKBgC3sZB0yNQRJzGycHXBL2JCfqxQQo0VkGhj0FA8unex5FJQ9fUBbfSiTpDGcSli5bKBj4bNJbkJDsHCgdd+WqEDw6xYxUxAT/wfYsUkgfH6yUSxglhXe/PZCLbZyTwcRsJZESCBlBaBeFVa8o8aHowk7TrRsaWg56xcxMPuMsf4Et5TUiXUX39KPIecxgdblpBXA=
   file_glob: true
-  file: ${PROJECT_NAME}-${TRAVIS_TAG}-${TARGET}.*
+  file: $CRATE_NAME-$TRAVIS_TAG-$TARGET.*
   # don't delete the artifacts from previous phases
   skip_cleanup: true
   # deploy when a new tag is pushed
   on:
-    # channel to use to produce the release artifacts
-    # NOTE make sure you only release *once* per target
-    # TODO you may want to pick a different channel
+    # TODO Here you can pick which targets will generate binary releases
+    # In this example, there are some targets that are tested using the stable
+    # and nightly channels. This condition makes sure there is only one release
+    # for such targets and that's generated using the stable channel
     condition: $TRAVIS_RUST_VERSION = stable
     tags: true
+  provider: releases
+
+cache: cargo
+before_cache:
+  # Travis can't cache files that are not readable by "others"
+  - chmod -R a+r $HOME/.cargo
 
 branches:
   only:
-    # Pushes and PR to the master branch
-    - master
-    # IMPORTANT Ruby regex to match tags. Required, or travis won't trigger deploys when a new tag
-    # is pushed. This regex matches semantic versions like v1.2.3-rc4+2016.02.22
+    # release tags
     - /^v\d+\.\d+\.\d+.*$/
+    - master
 
 notifications:
   email:

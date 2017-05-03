@@ -13,14 +13,14 @@ license = "MIT"
 
 [dependencies]
 polyline = "0.4"
-libc = "0.2.14"
+libc = "0.2.22"
 
 [build-dependencies]
 # rusty-cheddar = "0.3.3"
 
 [lib]
 name = "polyline_ffi"
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
 test = true
 doctest = false
 doc = true
