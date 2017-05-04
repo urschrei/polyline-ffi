@@ -34,7 +34,6 @@ main() {
         tar czf $src/$CRATE_NAME-$TRAVIS_TAG-$TARGET.tar.gz *
         cd $src
     fi
-
     rm -rf $stage
 }
 
