@@ -17,6 +17,26 @@ pub struct Array {
     pub len: size_t,
 }
 
+// we only want to allow 5 or 6, but we need the previous values for the cast to work
+#[allow(dead_code)]
+enum Precision {
+    Zero,
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
+    Six,
+}
+
+// We currently only allow 5 or 6
+fn get_precision(input: &uint32_t) -> Option<uint32_t> {
+    match *input {
+        5 => Some(Precision::Five as uint32_t),
+        6 => Some(Precision::Six as uint32_t),
+        _ => None,
+    }
+}
 
 // Build an Array from &[[f64; 2]], so it can be leaked across the FFI boundary
 impl From<Vec<[f64; 2]>> for Array {
@@ -39,10 +59,15 @@ impl From<Array> for Vec<[f64; 2]> {
 
 // Decode a Polyline into an Array
 fn arr_from_string(incoming: String, precision: uint32_t) -> Array {
-    let result: Array = match decode_polyline(incoming, precision) {
-        Ok(res) => res.into(),
-        // should be easy to check for
-        Err(_) => vec![[f64::NAN, f64::NAN]].into(),
+    let result: Array = if get_precision(&precision).is_some() {
+        match decode_polyline(incoming, precision) {
+            Ok(res) => res.into(),
+            // should be easy to check for
+            Err(_) => vec![[f64::NAN, f64::NAN]].into(),
+        }
+    } else {
+        // bad precision parameter
+        vec![[f64::NAN, f64::NAN]].into()
     };
     result.into()
 }
@@ -50,10 +75,14 @@ fn arr_from_string(incoming: String, precision: uint32_t) -> Array {
 // Decode an Array into a Polyline
 fn string_from_arr(incoming: Array, precision: uint32_t) -> String {
     let inc: Vec<_> = incoming.into();
-    match encode_coordinates(&inc, precision) {
-        Ok(res) => res,
-        // we don't need to adapt the error
-        Err(res) => res,
+    if get_precision(&precision).is_some() {
+        match encode_coordinates(&inc, precision) {
+            Ok(res) => res,
+            // we don't need to adapt the error
+            Err(res) => res,
+        }
+    } else {
+        "Bad precision parameter supplied".to_string()
     }
 }
 
@@ -106,7 +135,11 @@ pub extern "C" fn encode_coordinates_ffi(coords: Array, precision: uint32_t) -> 
     match CString::new(s) {
         Ok(res) => res.into_raw(),
         // It's arguably better to fail noisily, but this is robust
-        Err(_) => CString::new("Couldn't decode Polyline".to_string()).unwrap().into_raw(),
+        Err(_) => {
+            CString::new("Couldn't decode Polyline".to_string())
+                .unwrap()
+                .into_raw()
+        }
     }
 }
 
@@ -203,10 +236,32 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn test_bad_precision_decode() {
+        let result: Vec<_> =
+            decode_polyline_ffi(CString::new("_ibE_seK_seK_seK").unwrap().as_ptr(), 7).into();
+        assert_eq!(&result, &[[1.0, 2.0], [3.0, 4.0]]);
+        drop_float_array(result.into());
+    }
+
+    #[test]
     fn test_ffi_coordinate_encoding() {
         let input: Array = vec![[1.0, 2.0], [3.0, 4.0]].into();
         let output = "_ibE_seK_seK_seK".to_string();
         let pl = encode_coordinates_ffi(input, 5);
+        // Allocate a new String
+        let result = unsafe { CStr::from_ptr(pl).to_str().unwrap() };
+        assert_eq!(&result, &output);
+        // Drop received FFI data
+        drop_cstring(pl);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_bad_precision_encode() {
+        let input: Array = vec![[1.0, 2.0], [3.0, 4.0]].into();
+        let output = "_ibE_seK_seK_seK".to_string();
+        let pl = encode_coordinates_ffi(input, 4);
         // Allocate a new String
         let result = unsafe { CStr::from_ptr(pl).to_str().unwrap() };
         assert_eq!(&result, &output);
