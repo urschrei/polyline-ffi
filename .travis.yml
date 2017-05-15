@@ -12,92 +12,41 @@ env:
     # GH_TOKEN
     - secure: iUVC2jM8zFWjqPLCki1G1oKxvlKMdvJxoaBmrWq6ffWp9ICRn42925nhnNFK4B+UXyo27/+GaYTNFIff4ASkQf0iCPY+iY85ciRwc6R0xWTnvRcSosZ+Vot4Ip9bHKop2Xe5tJweH7RjypEn5pCZaH9Qw6+AqlqkoJz+UH/DNC2h+6pVXD18SPI9gsiBp+uR5K0cJRW5AVeSWORKNVWgYODSv/h7aQMik/3TOLpAS+tA+Uj/YHgS0mojUL2ucVS/zV9xVauUCq3fSRLz2bP5AsQpRpAVIp55g2CW9TRa9RoXPUcGZLflH/ccZh7K+mPamw7s414E3J79VGBeNTSIOKVoqJJDOTbvpxqz1cNoAMIkihcGNmGqGG6DZhsNuE3PZnCOB+FF4x/T8fQ37WF9E02A4pc3/z9B22LzdCk12Hs7aj4Z1EPkSTmj1gt/Gq0roQ56eZt7QjaamJ8c1z0Fmt4udcaW/56AlqEz9H38mVHIVUmeIygchdjO/E/PTP1aEWItQ20eVNYuo7yXFY35Y72jCybQ2JGnwhFqx641GDLPQTHFz6f4HOjK5mDKkMoagQZ737IWrXjDJaopkFGQZuH0/bxja9LI2rgi2L9gyI8u/PohB3om+rlRyshFQ+cr5qoWKDyF8ty1asB5vFtDtSGB5Gm+YGdDFrhMzB/0EgY=
 
-
-# AFAICT There are a few ways to set up the build jobs. This one is not the DRYest but I feel is the
-# easiest to reason about.
-# TODO Feel free to remove the channels/targets you don't need
-# NOTE Make *sure* you don't remove a reference (&foo) if you are going to dereference it (*foo)
 matrix:
   include:
-    # Stable channel
-    # - os: osx
-    #   rust: stable
-    #   env: TARGET=i686-apple-darwin
-    # - os: linux
-    #   rust: stable
-    #   env: TARGET=i686-unknown-linux-gnu
-    #   addons:
-    #     apt:
-    #       packages: &i686_unknown_linux_gnu
-    #         # Cross compiler and cross compiled C libraries
-    #         - gcc-multilib
-
-    ###############################
+    # STABLE
     - os: osx
-      osx_image: xcode7.3
+      osx_image: xcode8.3
       rust: stable
       env: TARGET=x86_64-apple-darwin
+
     - os: linux
       rust: stable
       env: TARGET=x86_64-unknown-linux-gnu
       services: docker
-    # Beta channel
-    # - os: osx
-    #   rust: beta
-    #   env: TARGET=i686-apple-darwin
-    # - os: linux
-    #   rust: beta
-    #   env: TARGET=i686-unknown-linux-gnu
-    #   addons:
-    #     apt:
-    #       packages: *i686_unknown_linux_gnu
-    ############################
+
+    # BETA
     - os: osx
       rust: beta
-      osx_image: xcode7.3
+      osx_image: xcode8.3
       env: TARGET=x86_64-apple-darwin
+
     - os: linux
       rust: beta
       env: TARGET=x86_64-unknown-linux-gnu
 
-
-    # Nightly channel
-    # - os: osx
-    #   rust: nightly
-    #   env: TARGET=i686-apple-darwin
-    # - os: linux
-    #   rust: nightly
-    #   env: TARGET=i686-unknown-linux-gnu
-    #   addons:
-    #     apt:
-    #       packages: *i686_unknown_linux_gnu
-
-    ############
+    # NIGHTLY
     - os: osx
-      osx_image: xcode7.3
+      osx_image: xcode8.3
       rust: nightly
       env: TARGET=x86_64-apple-darwin
+
     - os: linux
       rust: nightly
       env: TARGET=x86_64-unknown-linux-gnu
-
-  allow_failures:
-    # Target `i686-unknown-linux-gnu` is currently only available on the nightly channel
-    - os: linux
-      rust: stable
-      env: TARGET=i686-unknown-linux-gnu
-    - os: linux
-      rust: beta
-      env: TARGET=i686-unknown-linux-gnu
 
 before_install:
   - set -e
-
-before_script: |
-  PKGNAME="${TRAVIS_REPO_SLUG}" # must match with cargo.toml
-  LOCAL="~/.local" # install here to avoid `sudo`
-  pip install travis-cargo --user &&
-  export PATH=$HOME/.local/bin:$PATH
 
 install:
   - bash ci/install.sh
@@ -108,14 +57,13 @@ script:
 
 after_script: set +e
 
-after_success:
-  - if [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then docker pull $DOCKER_IMAGE; fi
-
 before_deploy:
+  # OSX deploy doesn't need a Dockerised manylinux1 build
   - if ! [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then bash ci/before_deploy.sh; fi
+  # Linux deploy needs Dockerised manylinux1 artefacts
+  - if [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then docker pull $DOCKER_IMAGE; fi
   - if [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then sudo docker run -e TRAVIS_TAG="$TRAVIS_TAG" --rm -v `pwd`:/io $DOCKER_IMAGE /io/ci/manylinux_rust.sh; fi
-  # - sudo chown $USER ${CRATE_NAME}-${TRAVIS_TAG}-${TARGET}.tar.gz
-  
+
 deploy:
   # TODO Regenerate this api_key for your project, this one won't work for you. Here's how:
   # - Go to 'https://github.com/settings/tokens/new' and generate a Token with only the
