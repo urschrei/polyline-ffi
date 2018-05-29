@@ -268,4 +268,13 @@ mod tests {
         // Drop received FFI data
         drop_cstring(pl);
     }
+    #[test]
+    fn test_long_vec() {
+        let arr: Array = include!("../test_fixtures/berlin.rs").into();
+        let s = include!("../test_fixtures/berlin_decoded.rs");
+        let encoded = encode_coordinates_ffi(arr, 5);
+        let result = unsafe { CStr::from_ptr(encoded).to_str().unwrap() };
+        assert_eq!(&result, &s);
+        drop_cstring(encoded);
+    }
 }
