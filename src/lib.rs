@@ -12,6 +12,7 @@ extern crate libc;
 use self::libc::{c_char, c_void, uint32_t, size_t};
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct Array {
     pub data: *const c_void,
     pub len: size_t,
@@ -272,9 +273,14 @@ mod tests {
     fn test_long_vec() {
         let arr: Array = include!("../test_fixtures/berlin.rs").into();
         let s = include!("../test_fixtures/berlin_decoded.rs");
-        let encoded = encode_coordinates_ffi(arr, 5);
-        let result = unsafe { CStr::from_ptr(encoded).to_str().unwrap() };
-        assert_eq!(&result, &s);
-        drop_cstring(encoded);
+        for _ in 0..9999 {
+            let a = arr.clone();
+            let s_ = s.clone();
+            let n = 5;
+            let encoded = encode_coordinates_ffi(a, n);
+            let result = unsafe { CStr::from_ptr(encoded).to_str().unwrap() };
+            assert_eq!(&result, &s_);
+            drop_cstring(encoded);
+        }
     }
 }
