@@ -59,7 +59,7 @@ impl From<Array> for Vec<[f64; 2]> {
 }
 
 // Decode a Polyline into an Array
-fn arr_from_string(incoming: String, precision: uint32_t) -> Array {
+fn arr_from_string(incoming: &str, precision: uint32_t) -> Array {
     let result: Array = if get_precision(&precision).is_some() {
         match decode_polyline(incoming, precision) {
             Ok(res) => res.into(),
@@ -105,8 +105,13 @@ fn string_from_arr(incoming: Array, precision: uint32_t) -> String {
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
 pub extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: uint32_t) -> Array {
-    let s: String = unsafe { CStr::from_ptr(pl).to_string_lossy().into_owned() };
-    arr_from_string(s, precision)
+    let s = unsafe { CStr::from_ptr(pl).to_str() };
+    if let Ok(unwrapped) = s {
+        arr_from_string(unwrapped, precision)
+    } else {
+        vec![[f64::NAN, f64::NAN]].into()
+    }
+    
 }
 
 /// Convert an array of coordinates into a Polyline
@@ -206,7 +211,7 @@ mod tests {
 
     #[test]
     fn test_string_conversion() {
-        let input = "_ibE_seK_seK_seK".to_string();
+        let input = "_ibE_seK_seK_seK";
         let output = [[1.0, 2.0], [3.0, 4.0]];
         // String to Array
         let transformed: Array = super::arr_from_string(input, 5);
@@ -218,7 +223,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bad_string_conversion() {
-        let input = "_p~iF~ps|U_u🗑lLnnqC_mqNvxq`@".to_string();
+        let input = "_p~iF~ps|U_u🗑lLnnqC_mqNvxq`@";
         let output = vec![[1.0, 2.0], [3.0, 4.0]];
         // String to Array
         let transformed: Array = super::arr_from_string(input, 5);
