@@ -9,14 +9,14 @@ repository = "https://github.com/urschrei/polyline-ffi"
 readme = "README.md"
 keywords = ["polyline", "geo", "ffi"]
 license = "MIT"
-# build = "src/build.rs"
+build = "src/build.rs"
 
 [dependencies]
 polyline = "0.5"
 libc = "0.2.42"
 
 [build-dependencies]
-# rusty-cheddar = "0.3.3"
+cbindgen = "0.6.8"
 
 [lib]
 name = "polyline_ffi"
