@@ -36,7 +36,7 @@ mk_tarball() {
     done
 
     cp /io/target/$TARGET/release/*.so $td
-    cp include/header.h $td
+    cp /io/include/header.h $td
     cp -r /io/target/$TARGET/release/*.dSYM $td 2>/dev/null || :
 
     pushd $td
