@@ -14,6 +14,7 @@ $ZIP = "$SRC_DIR\$($Env:CRATE_NAME)-$($Env:APPVEYOR_REPO_TAG_NAME)-$($Env:TARGET
 Copy-Item "$SRC_DIR\target\$($Env:TARGET)\release\polyline*" '.\'
 Copy-Item "$SRC_DIR\target\$($Env:TARGET)\release\deps\polyline*" '.\'
 Copy-Item "$SRC_DIR\include\header.h" '.\'
+Remove-Item polyline.pdb
 
 
 7z a "$ZIP" *
