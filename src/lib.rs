@@ -1,22 +1,17 @@
-#![doc(html_logo_url = "https://cdn.rawgit.com/urschrei/polyline-ffi/master/line.svg",
-       html_root_url = "https://urschrei.github.io/polyline-ffi/")]
+#![doc(
+    html_logo_url = "https://cdn.rawgit.com/urschrei/polyline-ffi/master/line.svg",
+    html_root_url = "https://urschrei.github.io/polyline-ffi/"
+)]
 //! This module exposes functions for accessing the Polyline encoding and decoding functions via FFI
-extern crate polyline;
-use polyline::{encode_coordinates, decode_polyline};
-use std::mem;
-use std::slice;
+use polyline::{decode_polyline, encode_coordinates};
 use std::f64;
 use std::ffi::{CStr, CString};
+use std::mem;
+use std::slice;
 
-extern crate libc;
-use self::libc::{c_char, c_void, uint32_t, size_t};
-
-#[repr(C)]
-#[derive(Clone)]
-pub struct Array {
-    pub data: *const c_void,
-    pub len: size_t,
-}
+use geo_types::LineString;
+use libc::{c_char, c_void, size_t};
+use num_traits::Float;
 
 // we only want to allow 5 or 6, but we need the previous values for the cast to work
 #[allow(dead_code)]
@@ -31,11 +26,34 @@ enum Precision {
 }
 
 // We currently only allow 5 or 6
-fn get_precision(input: &uint32_t) -> Option<uint32_t> {
-    match *input {
-        5 => Some(Precision::Five as uint32_t),
-        6 => Some(Precision::Six as uint32_t),
+fn get_precision(input: u32) -> Option<u32> {
+    match input {
+        5 => Some(Precision::Five as u32),
+        6 => Some(Precision::Six as u32),
         _ => None,
+    }
+}
+
+/// A C-compatible `struct` used for passing arrays across the FFI boundary
+#[repr(C)]
+pub struct Array {
+    pub data: *const libc::c_void,
+    pub len: libc::size_t,
+}
+
+// Build an Array from a LineString, so it can be leaked across the FFI boundary
+impl<T> From<geo_types::LineString<T>> for Array
+where
+    T: Float,
+{
+    fn from(sl: LineString<T>) -> Self {
+        let v: Vec<[T; 2]> = sl.into_iter().map(|coord| [coord.x, coord.y]).collect();
+        let array = Array {
+            data: v.as_ptr() as *const libc::c_void,
+            len: v.len() as libc::size_t,
+        };
+        mem::forget(v);
+        array
     }
 }
 
@@ -59,8 +77,8 @@ impl From<Array> for Vec<[f64; 2]> {
 }
 
 // Decode a Polyline into an Array
-fn arr_from_string(incoming: &str, precision: uint32_t) -> Array {
-    let result: Array = if get_precision(&precision).is_some() {
+fn arr_from_string(incoming: &str, precision: u32) -> Array {
+    let result: Array = if get_precision(precision).is_some() {
         match decode_polyline(incoming, precision) {
             Ok(res) => res.into(),
             // should be easy to check for
@@ -74,10 +92,10 @@ fn arr_from_string(incoming: &str, precision: uint32_t) -> Array {
 }
 
 // Decode an Array into a Polyline
-fn string_from_arr(incoming: Array, precision: uint32_t) -> String {
+fn string_from_arr(incoming: Array, precision: u32) -> String {
     let inc: Vec<_> = incoming.into();
-    if get_precision(&precision).is_some() {
-        match encode_coordinates(&inc, precision) {
+    if get_precision(precision).is_some() {
+        match encode_coordinates(Into::<LineString<_>>::into(inc), precision) {
             Ok(res) => res,
             // we don't need to adapt the error
             Err(res) => res,
@@ -104,14 +122,13 @@ fn string_from_arr(incoming: Array, precision: uint32_t) -> String {
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
-pub extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: uint32_t) -> Array {
+pub extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) -> Array {
     let s = unsafe { CStr::from_ptr(pl).to_str() };
     if let Ok(unwrapped) = s {
         arr_from_string(unwrapped, precision)
     } else {
         vec![[f64::NAN, f64::NAN]].into()
     }
-    
 }
 
 /// Convert an array of coordinates into a Polyline
@@ -136,16 +153,14 @@ pub extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: uint32_t) ->
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
-pub extern "C" fn encode_coordinates_ffi(coords: Array, precision: uint32_t) -> *mut c_char {
+pub extern "C" fn encode_coordinates_ffi(coords: Array, precision: u32) -> *mut c_char {
     let s: String = string_from_arr(coords, precision);
     match CString::new(s) {
         Ok(res) => res.into_raw(),
         // It's arguably better to fail noisily, but this is robust
-        Err(_) => {
-            CString::new("Couldn't decode Polyline".to_string())
-                .unwrap()
-                .into_raw()
-        }
+        Err(_) => CString::new("Couldn't decode Polyline".to_string())
+            .unwrap()
+            .into_raw(),
     }
 }
 
@@ -175,8 +190,8 @@ pub extern "C" fn drop_cstring(p: *mut c_char) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::{CStr, CString};
     use std::ptr;
-    use std::ffi::{CString, CStr};
 
     #[test]
     fn test_array_conversion() {
@@ -192,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_drop_empty_float_array() {
-        let original = vec![[1.0, 2.0], [3.0, 4.0]];
+        let original = vec![[2.0, 1.0], [4.0, 3.0]];
         // move into an Array, and leak it
         let mut arr: Array = original.into();
         // zero Array contents
@@ -202,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_coordinate_conversion() {
-        let input = vec![[1.0, 2.0], [3.0, 4.0]];
+        let input = vec![[2.0, 1.0], [4.0, 3.0]];
         let output = "_ibE_seK_seK_seK";
         let input_arr: Array = input.into();
         let transformed: String = super::string_from_arr(input_arr, 5);
@@ -212,7 +227,7 @@ mod tests {
     #[test]
     fn test_string_conversion() {
         let input = "_ibE_seK_seK_seK";
-        let output = [[1.0, 2.0], [3.0, 4.0]];
+        let output = [[2.0, 1.0], [4.0, 3.0]];
         // String to Array
         let transformed: Array = super::arr_from_string(input, 5);
         // Array to Vec
@@ -237,7 +252,7 @@ mod tests {
     fn test_ffi_polyline_decoding() {
         let result: Vec<_> =
             decode_polyline_ffi(CString::new("_ibE_seK_seK_seK").unwrap().as_ptr(), 5).into();
-        assert_eq!(&result, &[[1.0, 2.0], [3.0, 4.0]]);
+        assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
         drop_float_array(result.into());
     }
 
@@ -246,13 +261,13 @@ mod tests {
     fn test_bad_precision_decode() {
         let result: Vec<_> =
             decode_polyline_ffi(CString::new("_ibE_seK_seK_seK").unwrap().as_ptr(), 7).into();
-        assert_eq!(&result, &[[1.0, 2.0], [3.0, 4.0]]);
+        assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
         drop_float_array(result.into());
     }
 
     #[test]
     fn test_ffi_coordinate_encoding() {
-        let input: Array = vec![[1.0, 2.0], [3.0, 4.0]].into();
+        let input: Array = vec![[2.0, 1.0], [4.0, 3.0]].into();
         let output = "_ibE_seK_seK_seK".to_string();
         let pl = encode_coordinates_ffi(input, 5);
         // Allocate a new String
@@ -276,10 +291,11 @@ mod tests {
     }
     #[test]
     fn test_long_vec() {
-        let arr: Array = include!("../test_fixtures/berlin.rs").into();
+        use std::clone::Clone;
+        let arr = include!("../test_fixtures/berlin.rs");
         let s = include!("../test_fixtures/berlin_decoded.rs");
         for _ in 0..9999 {
-            let a = arr.clone();
+            let a = arr.clone().into();
             let s_ = s.clone();
             let n = 5;
             let encoded = encode_coordinates_ffi(a, n);
