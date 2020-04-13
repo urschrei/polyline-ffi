@@ -3,6 +3,10 @@
 # FFI Bindings for the [rust-polyline](https://github.com/georust/rust-polyline) Crate
 A Python implementation using these bindings is available at [pypolyline](https://github.com/urschrei/pypolyline)
 
+## A Note on Coordinate Order
+
+This crate uses `Coordinate` and `LineString` types from the `geo-types` crate, which encodes coordinates in `(x, y)` order. The Polyline algorithm and first-party documentation assumes the _opposite_ coordinate order. It is thus advisable to pay careful attention to the order of the coordinates you use for encoding and decoding.
+
 ## `decode_polyline_ffi`
 Convert a Polyline into an array of coordinates.  
 Callers must pass two arguments:

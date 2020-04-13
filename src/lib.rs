@@ -3,6 +3,11 @@
     html_root_url = "https://urschrei.github.io/polyline-ffi/"
 )]
 //! This module exposes functions for accessing the Polyline encoding and decoding functions via FFI
+//!
+//!
+//! ## A Note on Coordinate Order
+//! This crate uses `Coordinate` and `LineString` types from the `geo-types` crate, which encodes coordinates in `(x, y)` order. The Polyline algorithm and first-party documentation assumes the _opposite_ coordinate order. It is thus advisable to pay careful attention to the order of the coordinates you use for encoding and decoding.
+
 use polyline::{decode_polyline, encode_coordinates};
 use std::f64;
 use std::ffi::{CStr, CString};
