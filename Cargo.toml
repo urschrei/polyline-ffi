@@ -12,11 +12,11 @@ license = "MIT"
 build = "src/build.rs"
 
 [dependencies]
-polyline = "0.5"
-libc = "0.2.42"
+polyline = "0.7"
+libc = "0.2.68"
 
 [build-dependencies]
-cbindgen = "0.6.8"
+cbindgen = "0.14.1"
 
 [lib]
 name = "polyline_ffi"
