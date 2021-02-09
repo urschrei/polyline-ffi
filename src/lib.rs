@@ -14,9 +14,8 @@ use std::ffi::{CStr, CString};
 use std::mem;
 use std::slice;
 
-use geo_types::LineString;
+use geo_types::{CoordFloat, LineString};
 use libc::{c_char, c_void, size_t};
-use num_traits::Float;
 
 // we only want to allow 5 or 6, but we need the previous values for the cast to work
 #[allow(dead_code)]
@@ -49,7 +48,7 @@ pub struct Array {
 // Build an Array from a LineString, so it can be leaked across the FFI boundary
 impl<T> From<geo_types::LineString<T>> for Array
 where
-    T: Float,
+    T: CoordFloat,
 {
     fn from(sl: LineString<T>) -> Self {
         let v: Vec<[T; 2]> = sl.into_iter().map(|coord| [coord.x, coord.y]).collect();
@@ -255,8 +254,10 @@ mod tests {
 
     #[test]
     fn test_ffi_polyline_decoding() {
+        let cstr = CString::new("_ibE_seK_seK_seK").unwrap();
+        let ptr = cstr.as_ptr();
         let result: Vec<_> =
-            decode_polyline_ffi(CString::new("_ibE_seK_seK_seK").unwrap().as_ptr(), 5).into();
+            decode_polyline_ffi(ptr, 5).into();
         assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
         drop_float_array(result.into());
     }
@@ -264,8 +265,10 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_bad_precision_decode() {
+        let cstr = CString::new("_ibE_seK_seK_seK").unwrap();
+        let ptr = cstr.as_ptr();
         let result: Vec<_> =
-            decode_polyline_ffi(CString::new("_ibE_seK_seK_seK").unwrap().as_ptr(), 7).into();
+            decode_polyline_ffi(ptr, 7).into();
         assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
         drop_float_array(result.into());
     }
