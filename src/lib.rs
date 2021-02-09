@@ -256,8 +256,7 @@ mod tests {
     fn test_ffi_polyline_decoding() {
         let cstr = CString::new("_ibE_seK_seK_seK").unwrap();
         let ptr = cstr.as_ptr();
-        let result: Vec<_> =
-            decode_polyline_ffi(ptr, 5).into();
+        let result: Vec<_> = decode_polyline_ffi(ptr, 5).into();
         assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
         drop_float_array(result.into());
     }
@@ -267,8 +266,7 @@ mod tests {
     fn test_bad_precision_decode() {
         let cstr = CString::new("_ibE_seK_seK_seK").unwrap();
         let ptr = cstr.as_ptr();
-        let result: Vec<_> =
-            decode_polyline_ffi(ptr, 7).into();
+        let result: Vec<_> = decode_polyline_ffi(ptr, 7).into();
         assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
         drop_float_array(result.into());
     }

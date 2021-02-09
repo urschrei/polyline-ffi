@@ -1,6 +1,6 @@
 [package]
 name = "polyline-ffi"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Stephan Hügel <urschrei@gmail.com>"]
 description = "FFI bindings for the polyline crate"
 documentation = "https://urschrei.github.io/polyline-ffi/polyline_ffi/index.html"
@@ -9,17 +9,16 @@ repository = "https://github.com/urschrei/polyline-ffi"
 readme = "README.md"
 keywords = ["polyline", "geo", "ffi"]
 license = "MIT"
-build = "src/build.rs"
 edition = "2018"
 
 [dependencies]
-geo-types = "0.5"
-num-traits = "0.2.8"
-polyline = "0.7.2"
-libc = "0.2.68"
+geo-types = "0.7"
+num-traits = "0.2.14"
+polyline = "0.9.0"
+libc = "0.2.86"
 
 [build-dependencies]
-cbindgen = "0.14.1"
+cbindgen = "0.16.0"
 
 [lib]
 name = "polyline_ffi"
