@@ -2,8 +2,7 @@
 set -ex
 
 export CRATE_NAME=polyline-ffi
-# we pass {TRAVIS_TAG} into Docker from Travis
-export TARGET=x86_64-unknown-linux-gnu
+# we pass {TRAVIS_TAG} and $TARGET into Docker from Travis
 
 export PATH="$PATH:$HOME/.cargo/bin"
 # we always produce release artifacts using stable

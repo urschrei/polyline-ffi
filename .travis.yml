@@ -12,7 +12,8 @@ env:
     # TODO change the project name
     - CRATE_NAME=polyline-ffi
     - TRAVIS_CARGO_NIGHTLY_FEATURE=""
-    - DOCKER_IMAGE=quay.io/pypa/manylinux1_x86_64
+    - X86_DOCKER_IMAGE=quay.io/pypa/manylinux2014_x86_64
+    - AARCH_DOCKER_IMAGE=quay.io/pypa/manylinux2014_aarch64
     # GH_TOKEN
     - secure: iUVC2jM8zFWjqPLCki1G1oKxvlKMdvJxoaBmrWq6ffWp9ICRn42925nhnNFK4B+UXyo27/+GaYTNFIff4ASkQf0iCPY+iY85ciRwc6R0xWTnvRcSosZ+Vot4Ip9bHKop2Xe5tJweH7RjypEn5pCZaH9Qw6+AqlqkoJz+UH/DNC2h+6pVXD18SPI9gsiBp+uR5K0cJRW5AVeSWORKNVWgYODSv/h7aQMik/3TOLpAS+tA+Uj/YHgS0mojUL2ucVS/zV9xVauUCq3fSRLz2bP5AsQpRpAVIp55g2CW9TRa9RoXPUcGZLflH/ccZh7K+mPamw7s414E3J79VGBeNTSIOKVoqJJDOTbvpxqz1cNoAMIkihcGNmGqGG6DZhsNuE3PZnCOB+FF4x/T8fQ37WF9E02A4pc3/z9B22LzdCk12Hs7aj4Z1EPkSTmj1gt/Gq0roQ56eZt7QjaamJ8c1z0Fmt4udcaW/56AlqEz9H38mVHIVUmeIygchdjO/E/PTP1aEWItQ20eVNYuo7yXFY35Y72jCybQ2JGnwhFqx641GDLPQTHFz6f4HOjK5mDKkMoagQZ737IWrXjDJaopkFGQZuH0/bxja9LI2rgi2L9gyI8u/PohB3om+rlRyshFQ+cr5qoWKDyF8ty1asB5vFtDtSGB5Gm+YGdDFrhMzB/0EgY=
 
@@ -20,7 +21,7 @@ matrix:
   include:
     # STABLE
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode12.4
       rust: stable
       env: TARGET=x86_64-apple-darwin
 
@@ -29,10 +30,15 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
       services: docker
 
+    - os: linux
+      rust: stable
+      env: TARGET=aarch64-unknown-linux-gnu
+      services: docker
+
     # BETA
     - os: osx
       rust: beta
-      osx_image: xcode10.1
+      osx_image: xcode12.4
       env: TARGET=x86_64-apple-darwin
 
     - os: linux
@@ -41,7 +47,7 @@ matrix:
 
     # NIGHTLY
     - os: osx
-      osx_image: xcode10.1
+      osx_image: xcode12.4
       rust: nightly
       env: TARGET=x86_64-apple-darwin
 
@@ -66,15 +72,11 @@ after_success: |
     cargo install cargo-tarpaulin
     # Uncomment the following line for coveralls.io
     cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
-
   fi
 
 before_deploy:
-  # OSX deploy doesn't need a Dockerised manylinux1 build
-  - if ! [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then bash ci/before_deploy.sh; fi
-  # Linux deploy needs Dockerised manylinux1 artefacts
-  - if [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then docker pull $DOCKER_IMAGE; fi
-  - if [[ "$TARGET" == "x86_64-unknown-linux-gnu" ]]; then sudo docker run -e TRAVIS_TAG="$TRAVIS_TAG" --rm -v `pwd`:/io $DOCKER_IMAGE /io/ci/manylinux_rust.sh; fi
+  - shell_session_update() { :; };
+  - bash ci/before_deploy.sh
 
 deploy:
   # TODO Regenerate this api_key for your project, this one won't work for you. Here's how:
