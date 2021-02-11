@@ -15,6 +15,12 @@ install_rustup() {
     curl https://sh.rustup.rs -sSf | sh -s -- -y
     source ~/.cargo/env || true
     rustc -V
+    if [ $TARGET = aarch64-unknown-linux-gnu ]; then
+        gcc --version
+        # install linker
+        yum install gcc-aarch64-linux-gnu
+        aarch64-linux-gnu-gcc --version
+    fi
 }
 
 # Generate artefacts for release

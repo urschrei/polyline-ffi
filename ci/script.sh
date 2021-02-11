@@ -10,6 +10,10 @@ main() {
     if [ ! -z $DISABLE_TESTS ]; then
         return
     fi
+    # don't test on aarch, since we can't install the linker
+    if [ $TARGET = aarch64-unknown-linux-gnu ]; then
+        return
+    fi
 
     cross test --target $TARGET
 }
