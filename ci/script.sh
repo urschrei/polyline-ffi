@@ -12,7 +12,9 @@ main() {
     fi
     # don't test on aarch, since we can't install the linker
     if [ $TARGET = aarch64-unknown-linux-gnu ]; then
-        return
+        gcc --version
+        cc --version
+        # return
     fi
 
     cross test --target $TARGET
