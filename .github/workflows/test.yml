@@ -5,7 +5,7 @@ defaults:
     shell: bash
 
 env:
-  cratename: polyline_ffi
+  cratename: polyline-ffi
   MACOSX_DEPLOYMENT_TARGET: 10.9
 
 name: Test and Build
