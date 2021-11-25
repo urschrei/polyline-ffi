@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/urschrei/polyline-ffi.svg?branch=master)](https://travis-ci.org/urschrei/polyline-ffi) [![Build status](https://ci.appveyor.com/api/projects/status/b7706682i39l1on9/branch/master?svg=true)](https://ci.appveyor.com/project/urschrei/polyline-ffi/branch/master) [![Coverage Status](https://coveralls.io/repos/github/urschrei/polyline-ffi/badge.svg?branch=master)](https://coveralls.io/github/urschrei/polyline-ffi?branch=master)
+[![Test and Build](https://github.com/urschrei/polyline-ffi/actions/workflows/test.yml/badge.svg)](https://github.com/urschrei/polyline-ffi/actions/workflows/test.yml) [![Coverage Status](https://coveralls.io/repos/github/urschrei/polyline-ffi/badge.svg?branch=master)](https://coveralls.io/github/urschrei/polyline-ffi?branch=master)
 
 # FFI Bindings for the [rust-polyline](https://github.com/georust/rust-polyline) Crate
 A Python implementation using these bindings is available at [pypolyline](https://github.com/urschrei/pypolyline)
