@@ -51,7 +51,8 @@ where
     T: CoordFloat,
 {
     fn from(sl: LineString<T>) -> Self {
-        let v: Vec<[T; 2]> = sl.into_iter().map(|coord| [coord.x, coord.y]).collect();
+        let mut v: Vec<[T; 2]> = sl.into_iter().map(|coord| [coord.x, coord.y]).collect();
+        v.shrink_to_fit();
         let array = Array {
             data: v.as_ptr() as *const libc::c_void,
             len: v.len() as libc::size_t,
@@ -64,11 +65,13 @@ where
 // Build an Array from &[[f64; 2]], so it can be leaked across the FFI boundary
 impl From<Vec<[f64; 2]>> for Array {
     fn from(sl: Vec<[f64; 2]>) -> Self {
+        let mut shrunken = sl;
+        shrunken.shrink_to_fit();
         let array = Array {
-            data: sl.as_ptr() as *const c_void,
-            len: sl.len() as size_t,
+            data: shrunken.as_ptr() as *const c_void,
+            len: shrunken.len() as size_t,
         };
-        mem::forget(sl);
+        mem::forget(shrunken);
         array
     }
 }
@@ -92,7 +95,7 @@ fn arr_from_string(incoming: &str, precision: u32) -> Array {
         // bad precision parameter
         vec![[f64::NAN, f64::NAN]].into()
     };
-    result.into()
+    result
 }
 
 // Decode an Array into a Polyline
@@ -126,8 +129,8 @@ fn string_from_arr(incoming: Array, precision: u32) -> String {
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
-pub extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) -> Array {
-    let s = unsafe { CStr::from_ptr(pl).to_str() };
+pub unsafe extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) -> Array {
+    let s = CStr::from_ptr(pl).to_str();
     if let Ok(unwrapped) = s {
         arr_from_string(unwrapped, precision)
     } else {
@@ -187,8 +190,8 @@ pub extern "C" fn drop_float_array(arr: Array) {
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
-pub extern "C" fn drop_cstring(p: *mut c_char) {
-    let _ = unsafe { CString::from_raw(p) };
+pub unsafe extern "C" fn drop_cstring(p: *mut c_char) {
+    let _ = CString::from_raw(p);
 }
 
 #[cfg(test)]
@@ -256,7 +259,7 @@ mod tests {
     fn test_ffi_polyline_decoding() {
         let cstr = CString::new("_ibE_seK_seK_seK").unwrap();
         let ptr = cstr.as_ptr();
-        let result: Vec<_> = decode_polyline_ffi(ptr, 5).into();
+        let result: Vec<_> = unsafe { decode_polyline_ffi(ptr, 5).into() };
         assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
         drop_float_array(result.into());
     }
@@ -266,7 +269,7 @@ mod tests {
     fn test_bad_precision_decode() {
         let cstr = CString::new("_ibE_seK_seK_seK").unwrap();
         let ptr = cstr.as_ptr();
-        let result: Vec<_> = decode_polyline_ffi(ptr, 7).into();
+        let result: Vec<_> = unsafe { decode_polyline_ffi(ptr, 7).into() };
         assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
         drop_float_array(result.into());
     }
@@ -280,7 +283,7 @@ mod tests {
         let result = unsafe { CStr::from_ptr(pl).to_str().unwrap() };
         assert_eq!(&result, &output);
         // Drop received FFI data
-        drop_cstring(pl);
+        unsafe { drop_cstring(pl) };
     }
 
     #[test]
@@ -293,8 +296,9 @@ mod tests {
         let result = unsafe { CStr::from_ptr(pl).to_str().unwrap() };
         assert_eq!(&result, &output);
         // Drop received FFI data
-        drop_cstring(pl);
+        unsafe { drop_cstring(pl) };
     }
+
     #[test]
     fn test_long_vec() {
         use std::clone::Clone;
@@ -307,7 +311,7 @@ mod tests {
             let encoded = encode_coordinates_ffi(a, n);
             let result = unsafe { CStr::from_ptr(encoded).to_str().unwrap() };
             assert_eq!(&result, &s_);
-            drop_cstring(encoded);
+            unsafe { drop_cstring(encoded) };
         }
     }
 }
