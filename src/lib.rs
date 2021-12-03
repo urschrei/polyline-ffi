@@ -1,6 +1,6 @@
 #![doc(
     html_logo_url = "https://cdn.rawgit.com/urschrei/polyline-ffi/master/line.svg",
-    html_root_url = "https://urschrei.github.io/polyline-ffi/"
+    html_root_url = "https://docs.rs/polyline-ffi/"
 )]
 //! This module exposes functions for accessing the Polyline encoding and decoding functions via FFI
 //!
@@ -9,13 +9,12 @@
 //! This crate uses `Coordinate` and `LineString` types from the `geo-types` crate, which encodes coordinates in `(x, y)` order. The Polyline algorithm and first-party documentation assumes the _opposite_ coordinate order. It is thus advisable to pay careful attention to the order of the coordinates you use for encoding and decoding.
 
 use polyline::{decode_polyline, encode_coordinates};
-use std::f64;
 use std::ffi::{CStr, CString};
-use std::mem;
 use std::slice;
+use std::{f64, ptr};
 
 use geo_types::{CoordFloat, LineString};
-use libc::{c_char, c_void, size_t};
+use libc::c_char;
 
 // we only want to allow 5 or 6, but we need the previous values for the cast to work
 #[allow(dead_code)]
@@ -38,54 +37,104 @@ fn get_precision(input: u32) -> Option<u32> {
     }
 }
 
-/// A C-compatible `struct` used for passing arrays across the FFI boundary
+/// A C-compatible `struct` originating **outside** Rust
+/// used for passing arrays across the FFI boundary
 #[repr(C)]
-pub struct Array {
+pub struct ExternalArray {
     pub data: *const libc::c_void,
     pub len: libc::size_t,
 }
 
-// Build an Array from a LineString, so it can be leaked across the FFI boundary
-impl<T> From<geo_types::LineString<T>> for Array
+/// A C-compatible `struct` originating **inside** Rust
+/// used for passing arrays across the FFI boundary
+#[repr(C)]
+pub struct InternalArray {
+    pub data: *mut libc::c_void,
+    pub len: libc::size_t,
+}
+
+impl Drop for InternalArray {
+    fn drop(&mut self) {
+        if self.data.is_null() {
+            return;
+        }
+        let _ = unsafe {
+            // we originated this data, so pointer-to-slice -> box -> vec
+            let p = ptr::slice_from_raw_parts_mut(self.data as *mut [f64; 2], self.len);
+            drop(Box::from_raw(p));
+        };
+    }
+}
+
+// Build an InternalArray from a LineString, so it can be leaked across the FFI boundary
+impl<T> From<LineString<T>> for InternalArray
 where
     T: CoordFloat,
 {
     fn from(sl: LineString<T>) -> Self {
-        let mut v: Vec<[T; 2]> = sl.into_iter().map(|coord| [coord.x, coord.y]).collect();
-        v.shrink_to_fit();
-        let array = Array {
-            data: v.as_ptr() as *const libc::c_void,
-            len: v.len() as libc::size_t,
-        };
-        mem::forget(v);
-        array
+        let v: Vec<[T; 2]> = sl.0.iter().map(|p| [p.x, p.y]).collect();
+        let boxed = v.into_boxed_slice();
+        let blen = boxed.len();
+        let rawp = Box::into_raw(boxed);
+        InternalArray {
+            data: rawp as *mut libc::c_void,
+            len: blen as libc::size_t,
+        }
     }
 }
 
-// Build an Array from &[[f64; 2]], so it can be leaked across the FFI boundary
-impl From<Vec<[f64; 2]>> for Array {
-    fn from(sl: Vec<[f64; 2]>) -> Self {
-        let mut shrunken = sl;
-        shrunken.shrink_to_fit();
-        let array = Array {
-            data: shrunken.as_ptr() as *const c_void,
-            len: shrunken.len() as size_t,
-        };
-        mem::forget(shrunken);
-        array
+// Build a LineString from an InternalArray
+impl From<InternalArray> for LineString<f64> {
+    fn from(arr: InternalArray) -> Self {
+        // we originated this data, so pointer-to-slice -> box -> vec
+        unsafe {
+            let p = ptr::slice_from_raw_parts_mut(arr.data as *mut [f64; 2], arr.len);
+            let v = Box::from_raw(p).to_vec();
+            v.into()
+        }
     }
 }
 
-// Build &[[f64; 2]] from an Array, so it can be dropped
-impl From<Array> for Vec<[f64; 2]> {
-    fn from(arr: Array) -> Self {
-        unsafe { slice::from_raw_parts(arr.data as *mut [f64; 2], arr.len).to_vec() }
+// Build an InternalArray from a LineString, so it can be leaked across the FFI boundary
+impl From<Vec<[f64; 2]>> for InternalArray {
+    fn from(v: Vec<[f64; 2]>) -> Self {
+        let boxed = v.into_boxed_slice();
+        let blen = boxed.len();
+        let rawp = Box::into_raw(boxed);
+        InternalArray {
+            data: rawp as *mut libc::c_void,
+            len: blen as libc::size_t,
+        }
     }
 }
 
-// Decode a Polyline into an Array
-fn arr_from_string(incoming: &str, precision: u32) -> Array {
-    let result: Array = if get_precision(precision).is_some() {
+// Build an InternalArray from a LineString, so it can be leaked across the FFI boundary
+impl From<Vec<[f64; 2]>> for ExternalArray {
+    fn from(v: Vec<[f64; 2]>) -> Self {
+        let boxed = v.into_boxed_slice();
+        let blen = boxed.len();
+        let rawp = Box::into_raw(boxed);
+        ExternalArray {
+            data: rawp as *mut libc::c_void,
+            len: blen as libc::size_t,
+        }
+    }
+}
+
+// Build a LineString from an ExternalArray
+impl From<ExternalArray> for LineString<f64> {
+    fn from(arr: ExternalArray) -> Self {
+        // we need to take ownership of this data, so slice -> vec
+        unsafe {
+            let v = slice::from_raw_parts(arr.data as *mut [f64; 2], arr.len).to_vec();
+            v.into()
+        }
+    }
+}
+
+// Decode a Polyline into an InternalArray
+fn arr_from_string(incoming: &str, precision: u32) -> InternalArray {
+    let result: InternalArray = if get_precision(precision).is_some() {
         match decode_polyline(incoming, precision) {
             Ok(res) => res.into(),
             // should be easy to check for
@@ -99,8 +148,8 @@ fn arr_from_string(incoming: &str, precision: u32) -> Array {
 }
 
 // Decode an Array into a Polyline
-fn string_from_arr(incoming: Array, precision: u32) -> String {
-    let inc: Vec<_> = incoming.into();
+fn string_from_arr(incoming: ExternalArray, precision: u32) -> String {
+    let inc: LineString<_> = incoming.into();
     if get_precision(precision).is_some() {
         match encode_coordinates(Into::<LineString<_>>::into(inc), precision) {
             Ok(res) => res,
@@ -129,7 +178,7 @@ fn string_from_arr(incoming: Array, precision: u32) -> String {
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
-pub unsafe extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) -> Array {
+pub unsafe extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) -> InternalArray {
     let s = CStr::from_ptr(pl).to_str();
     if let Ok(unwrapped) = s {
         arr_from_string(unwrapped, precision)
@@ -160,7 +209,7 @@ pub unsafe extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) 
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
-pub extern "C" fn encode_coordinates_ffi(coords: Array, precision: u32) -> *mut c_char {
+pub extern "C" fn encode_coordinates_ffi(coords: ExternalArray, precision: u32) -> *mut c_char {
     let s: String = string_from_arr(coords, precision);
     match CString::new(s) {
         Ok(res) => res.into_raw(),
@@ -177,12 +226,7 @@ pub extern "C" fn encode_coordinates_ffi(coords: Array, precision: u32) -> *mut 
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
-pub extern "C" fn drop_float_array(arr: Array) {
-    if arr.data.is_null() {
-        return;
-    }
-    let _: Vec<_> = arr.into();
-}
+pub extern "C" fn drop_float_array(_: InternalArray) {}
 
 /// Free `CString` memory which Rust has allocated across the FFI boundary
 ///
@@ -191,34 +235,21 @@ pub extern "C" fn drop_float_array(arr: Array) {
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
 #[no_mangle]
 pub unsafe extern "C" fn drop_cstring(p: *mut c_char) {
-    let _ = CString::from_raw(p);
+    drop(CString::from_raw(p));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::ffi::{CStr, CString};
     use std::ptr;
 
     #[test]
-    fn test_array_conversion() {
-        let original = vec![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];
-        // move into an Array, and leak it
-        let arr: Array = original.into();
-        // move back into a Vec -- leaked value still needs to be dropped
-        let converted: Vec<_> = arr.into();
-        assert_eq!(&converted, &[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]);
-        // drop it
-        drop_float_array(converted.into());
-    }
-
-    #[test]
     fn test_drop_empty_float_array() {
-        let original = vec![[2.0, 1.0], [4.0, 3.0]];
+        let original: LineString<_> = vec![[2.0, 1.0], [4.0, 3.0]].into();
         // move into an Array, and leak it
-        let mut arr: Array = original.into();
+        let mut arr: InternalArray = original.into();
         // zero Array contents
-        arr.data = ptr::null();
+        arr.data = ptr::null_mut();
         drop_float_array(arr);
     }
 
@@ -226,7 +257,7 @@ mod tests {
     fn test_coordinate_conversion() {
         let input = vec![[2.0, 1.0], [4.0, 3.0]];
         let output = "_ibE_seK_seK_seK";
-        let input_arr: Array = input.into();
+        let input_arr: ExternalArray = input.into();
         let transformed: String = super::string_from_arr(input_arr, 5);
         assert_eq!(transformed, output);
     }
@@ -234,12 +265,15 @@ mod tests {
     #[test]
     fn test_string_conversion() {
         let input = "_ibE_seK_seK_seK";
-        let output = [[2.0, 1.0], [4.0, 3.0]];
+        let output = vec![[2.0, 1.0], [4.0, 3.0]];
         // String to Array
-        let transformed: Array = super::arr_from_string(input, 5);
-        // Array to Vec
-        let transformed_arr: Vec<_> = transformed.into();
-        assert_eq!(&transformed_arr, &output);
+        let transformed: InternalArray = super::arr_from_string(input, 5);
+        // Array to LS via slice, as we want to take ownership of a copy for testing purposes
+        let v = unsafe {
+            slice::from_raw_parts(transformed.data as *mut [f64; 2], transformed.len).to_vec()
+        };
+        let ls: LineString<_> = v.into();
+        assert_eq!(ls, output.into());
     }
 
     #[test]
@@ -248,55 +282,13 @@ mod tests {
         let input = "_p~iF~ps|U_u🗑lLnnqC_mqNvxq`@";
         let output = vec![[1.0, 2.0], [3.0, 4.0]];
         // String to Array
-        let transformed: Array = super::arr_from_string(input, 5);
-        // Array to Vec
-        let transformed_arr: Vec<_> = transformed.into();
-        // this will fail, bc transformed_arr is [[NaN, NaN]]
-        assert_eq!(transformed_arr, output.as_slice());
-    }
-
-    #[test]
-    fn test_ffi_polyline_decoding() {
-        let cstr = CString::new("_ibE_seK_seK_seK").unwrap();
-        let ptr = cstr.as_ptr();
-        let result: Vec<_> = unsafe { decode_polyline_ffi(ptr, 5).into() };
-        assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
-        drop_float_array(result.into());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_bad_precision_decode() {
-        let cstr = CString::new("_ibE_seK_seK_seK").unwrap();
-        let ptr = cstr.as_ptr();
-        let result: Vec<_> = unsafe { decode_polyline_ffi(ptr, 7).into() };
-        assert_eq!(&result, &[[2.0, 1.0], [4.0, 3.0]]);
-        drop_float_array(result.into());
-    }
-
-    #[test]
-    fn test_ffi_coordinate_encoding() {
-        let input: Array = vec![[2.0, 1.0], [4.0, 3.0]].into();
-        let output = "_ibE_seK_seK_seK".to_string();
-        let pl = encode_coordinates_ffi(input, 5);
-        // Allocate a new String
-        let result = unsafe { CStr::from_ptr(pl).to_str().unwrap() };
-        assert_eq!(&result, &output);
-        // Drop received FFI data
-        unsafe { drop_cstring(pl) };
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_bad_precision_encode() {
-        let input: Array = vec![[1.0, 2.0], [3.0, 4.0]].into();
-        let output = "_ibE_seK_seK_seK".to_string();
-        let pl = encode_coordinates_ffi(input, 4);
-        // Allocate a new String
-        let result = unsafe { CStr::from_ptr(pl).to_str().unwrap() };
-        assert_eq!(&result, &output);
-        // Drop received FFI data
-        unsafe { drop_cstring(pl) };
+        let transformed: InternalArray = super::arr_from_string(input, 5);
+        // Array to LS via slice, as we want to take ownership of a copy for testing purposes
+        let v = unsafe {
+            slice::from_raw_parts(transformed.data as *mut [f64; 2], transformed.len).to_vec()
+        };
+        let ls: LineString<_> = v.into();
+        assert_eq!(ls, output.into());
     }
 
     #[test]
@@ -305,13 +297,12 @@ mod tests {
         let arr = include!("../test_fixtures/berlin.rs");
         let s = include!("../test_fixtures/berlin_decoded.rs");
         for _ in 0..9999 {
-            let a = arr.clone().into();
+            let a = arr.clone();
             let s_ = s.clone();
             let n = 5;
-            let encoded = encode_coordinates_ffi(a, n);
-            let result = unsafe { CStr::from_ptr(encoded).to_str().unwrap() };
-            assert_eq!(&result, &s_);
-            unsafe { drop_cstring(encoded) };
+            let input_ls: ExternalArray = a.into();
+            let transformed: String = super::string_from_arr(input_ls, n);
+            assert_eq!(transformed, s_);
         }
     }
 }
