@@ -6,6 +6,7 @@ defaults:
 
 env:
   cratename: polyline-ffi
+  rustflags: -C rpath
 
 name: Test and Build
 
