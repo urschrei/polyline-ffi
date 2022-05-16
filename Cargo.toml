@@ -24,7 +24,7 @@ cbindgen = "0.23.0"
 headers = []
 
 [lib]
-name = "polyline_ffi"
+name = "polyline-ffi"
 crate-type = ["cdylib"]
 test = true
 doctest = false
