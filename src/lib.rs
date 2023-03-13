@@ -8,6 +8,14 @@
 //! ## A Note on Coordinate Order
 //! This crate uses `Coordinate` and `LineString` types from the `geo-types` crate, which encodes coordinates in `(x, y)` order. The Polyline algorithm and first-party documentation assumes the _opposite_ coordinate order. It is thus advisable to pay careful attention to the order of the coordinates you use for encoding and decoding.
 
+#![deny(
+    clippy::cast_slice_from_raw_parts,
+    clippy::cast_slice_different_sizes,
+    clippy::invalid_null_ptr_usage,
+    clippy::ptr_as_ptr,
+    clippy::transmute_ptr_to_ref
+)]
+
 use polyline::{decode_polyline, encode_coordinates};
 use std::ffi::{CStr, CString};
 use std::slice;
@@ -58,9 +66,9 @@ impl Drop for InternalArray {
         if self.data.is_null() {
             return;
         }
-        let _ = unsafe {
+        unsafe {
             // we originated this data, so pointer-to-slice -> box -> vec
-            let p = ptr::slice_from_raw_parts_mut(self.data as *mut [f64; 2], self.len);
+            let p = ptr::slice_from_raw_parts_mut(self.data.cast::<[f64; 2]>(), self.len);
             drop(Box::from_raw(p));
         };
     }
@@ -77,7 +85,7 @@ where
         let blen = boxed.len();
         let rawp = Box::into_raw(boxed);
         InternalArray {
-            data: rawp as *mut libc::c_void,
+            data: rawp.cast::<libc::c_void>(),
             len: blen as libc::size_t,
         }
     }
@@ -88,7 +96,7 @@ impl From<InternalArray> for LineString<f64> {
     fn from(arr: InternalArray) -> Self {
         // we originated this data, so pointer-to-slice -> box -> vec
         unsafe {
-            let p = ptr::slice_from_raw_parts_mut(arr.data as *mut [f64; 2], arr.len);
+            let p = ptr::slice_from_raw_parts_mut(arr.data.cast::<[f64; 2]>(), arr.len);
             let v = Box::from_raw(p).to_vec();
             v.into()
         }
@@ -102,7 +110,7 @@ impl From<Vec<[f64; 2]>> for InternalArray {
         let blen = boxed.len();
         let rawp = Box::into_raw(boxed);
         InternalArray {
-            data: rawp as *mut libc::c_void,
+            data: rawp.cast::<libc::c_void>(),
             len: blen as libc::size_t,
         }
     }
@@ -115,7 +123,7 @@ impl From<Vec<[f64; 2]>> for ExternalArray {
         let blen = boxed.len();
         let rawp = Box::into_raw(boxed);
         ExternalArray {
-            data: rawp as *mut libc::c_void,
+            data: rawp.cast::<libc::c_void>(),
             len: blen as libc::size_t,
         }
     }
