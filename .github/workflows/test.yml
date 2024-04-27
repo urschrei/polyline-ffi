@@ -43,7 +43,7 @@ jobs:
           use-cross: false
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -97,7 +97,7 @@ jobs:
         run: |
           xcodebuild -showsdks
           SDKROOT=$(xcrun -sdk macosx13.1 --show-sdk-path)
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -177,7 +177,7 @@ jobs:
           cp "${{ env.STAGE }}/${{ env.ASSET_NAME }}.${{ env.EXTENSION }}" zipped/
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: |
             zipped/${{ env.ASSET_NAME }}.${{ env.EXTENSION }}
