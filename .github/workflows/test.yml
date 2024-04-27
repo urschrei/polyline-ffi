@@ -92,11 +92,11 @@ jobs:
           target: x86_64-pc-windows-msvc
           use-cross: false
     steps:
-      - name: Switch to macOS 13.x SDK
+      - name: Switch to macOS 14.x SDK
         if: matrix.target == 'aarch64-apple-darwin'
         run: |
           xcodebuild -showsdks
-          SDKROOT=$(xcrun -sdk macosx13.1 --show-sdk-path)
+          SDKROOT=$(xcrun -sdk macosx14.0 --show-sdk-path)
       - uses: actions/checkout@v4
       - uses: actions-rs/toolchain@v1
         with:
