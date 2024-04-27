@@ -306,11 +306,10 @@ mod tests {
         let s = include!("../test_fixtures/berlin_decoded.rs");
         for _ in 0..9999 {
             let a = arr.clone();
-            let s_ = s.clone();
             let n = 5;
             let input_ls: ExternalArray = a.into();
             let transformed: String = super::string_from_arr(input_ls, n);
-            assert_eq!(transformed, s_);
+            assert_eq!(transformed, s);
         }
     }
 }
