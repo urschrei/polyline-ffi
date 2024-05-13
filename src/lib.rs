@@ -19,7 +19,7 @@
 use polyline::{decode_polyline, encode_coordinates};
 use std::ffi::{CStr, CString};
 use std::{f64, ptr};
-use std::{panic, slice};
+use std::{slice};
 
 use geo_types::{CoordFloat, LineString};
 use libc::c_char;
@@ -143,12 +143,8 @@ impl From<ExternalArray> for LineString<f64> {
 // Decode a Polyline into an InternalArray
 fn arr_from_string(incoming: &str, precision: u32) -> InternalArray {
     let result: InternalArray = if get_precision(precision).is_some() {
-        match panic::catch_unwind(|| decode_polyline(incoming, precision)) {
-            Ok(res) => match res {
-                Ok(inner_res) => inner_res.into(),
-                Err(_) => vec![[f64::NAN, f64::NAN]].into(),
-            },
-            // should be easy to check for
+        match decode_polyline(incoming, precision) {
+            Ok(res) => res.into(),
             Err(_) => vec![[f64::NAN, f64::NAN]].into(),
         }
     } else {
