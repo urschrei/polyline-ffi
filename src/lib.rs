@@ -165,7 +165,7 @@ fn string_from_arr(incoming: ExternalArray, precision: u32) -> String {
         match encode_coordinates(Into::<LineString<_>>::into(inc), precision) {
             Ok(res) => res,
             // we don't need to adapt the error
-            Err(res) => res,
+            Err(res) => res.to_string(),
         }
     } else {
         "Bad precision parameter supplied".to_string()
@@ -225,9 +225,10 @@ pub extern "C" fn encode_coordinates_ffi(coords: ExternalArray, precision: u32) 
     match CString::new(s) {
         Ok(res) => res.into_raw(),
         // It's arguably better to fail noisily, but this is robust
-        Err(_) => CString::new("Couldn't decode Polyline".to_string())
-            .unwrap()
-            .into_raw(),
+        Err(res) => {
+            let err = CString::new(res.to_string()).unwrap();
+            err.into_raw()
+        }
     }
 }
 
