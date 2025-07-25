@@ -1,6 +1,6 @@
 [package]
 name = "polyline-ffi"
-version = "0.7.2"
+version = "0.7.3"
 authors = ["Stephan Hügel <urschrei@gmail.com>"]
 description = "FFI bindings for the polyline crate"
 documentation = "https://docs.rs/polyline-ffi"
