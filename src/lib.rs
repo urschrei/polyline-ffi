@@ -184,15 +184,15 @@ fn string_from_arr(incoming: ExternalArray, precision: u32) -> String {
 /// # Safety
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
-#[no_mangle]
-pub unsafe extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) -> InternalArray {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) -> InternalArray { unsafe {
     let s = CStr::from_ptr(pl).to_str();
     if let Ok(unwrapped) = s {
         arr_from_string(unwrapped, precision)
     } else {
         vec![[f64::NAN, f64::NAN]].into()
     }
-}
+}}
 
 /// Convert an array of coordinates into a Polyline
 ///
@@ -215,7 +215,7 @@ pub unsafe extern "C" fn decode_polyline_ffi(pl: *const c_char, precision: u32) 
 /// # Safety
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn encode_coordinates_ffi(coords: ExternalArray, precision: u32) -> *mut c_char {
     let s: String = string_from_arr(coords, precision);
     match CString::new(s) {
@@ -233,7 +233,7 @@ pub extern "C" fn encode_coordinates_ffi(coords: ExternalArray, precision: u32) 
 /// # Safety
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn drop_float_array(_: InternalArray) {}
 
 /// Free `CString` memory which Rust has allocated across the FFI boundary
@@ -241,10 +241,10 @@ pub extern "C" fn drop_float_array(_: InternalArray) {}
 /// # Safety
 ///
 /// This function is unsafe because it accesses a raw pointer which could contain arbitrary data
-#[no_mangle]
-pub unsafe extern "C" fn drop_cstring(p: *mut c_char) {
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn drop_cstring(p: *mut c_char) { unsafe {
     drop(CString::from_raw(p));
-}
+}}
 
 #[cfg(test)]
 mod tests {
